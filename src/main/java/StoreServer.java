@@ -9,50 +9,29 @@ import java.util.regex.Pattern;
 public class StoreServer{
     private static Map<String, Integer> inventory = new HashMap<>();
     private static Map<String, Customer> customers = new HashMap<>();
-    private Socket socket = null;
-    private ServerSocket serverSocket = null;
-    private DataInputStream dataInputStream = null;
     private Customer currentCustomer;
-
-    public StoreServer(int port) {
-        try {
-            serverSocket = new ServerSocket(port);
-            System.out.println("Server started");
-            while (true) {
-
-                System.out.println("Waiting for a client ...");
-
-                socket = serverSocket.accept();
-                System.out.println("Client accepted");
-
-                dataInputStream = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-
-                String request = "";
-
-                while (!request.equals("exit")) {
-                    try {
-                        request = dataInputStream.readUTF();
-                        System.out.println(request);
-
-                    }
-                    catch(IOException i) {
-                        System.out.println(i);
-                    }
-                }
-            }
-            //System.out.println("Closing connection");
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     public static void main(String[] args) {
         inventory.put("shoe1", 5);
         inventory.put("shoe2", 5);
         inventory.put("shoe3", 5);
 
-        StoreServer storeServer = new StoreServer(8080);
+        ServerSocket serverSocket = null;
+
+        try {
+            serverSocket = new ServerSocket(8080);
+            System.out.println("Server started");
+
+            while (true) {
+
+                System.out.println("Waiting for a client ...");
+                new ClientHandler(serverSocket.accept()).start();
+            }
+            //System.out.println("Closing connection");
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -178,6 +157,47 @@ public class StoreServer{
         dataOutputStream.writeUTF("Your balance is " + currentCustomer.getMoney());
     }
 
+    private static class ClientHandler extends Thread {
+        private Socket socket;
+        private DataInputStream dataInputStream = null;
+
+        public ClientHandler(Socket socket) {
+            this.socket = socket;
+            System.out.println("Client accepted");
+        }
+
+        public void run() {
+            try {
+                dataInputStream = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+
+                String request = "";
+
+                while (!request.equals("exit")) {
+                    try {
+                        request = dataInputStream.readUTF();
+                        System.out.println(request);
+
+                    }
+                    catch(IOException i) {
+                        System.out.println(i);
+                    }
+                }
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+            finally {
+                try {
+                    if (dataInputStream != null)
+                        dataInputStream.close();
+                    if (socket != null)
+                        socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 }
 
 class Customer {
@@ -208,3 +228,4 @@ class Customer {
         return name;
     }
 }
+

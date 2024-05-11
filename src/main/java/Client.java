@@ -18,10 +18,6 @@ public class Client {
             while (!request.equals("exit")) {
                 request = bufferedReader.readLine();
                 dataOutputStream.writeUTF(request);
-
-/*                String response = dataInputStream.readUTF();
-                System.out.println(response);*/
-
             }
         }
         catch (IOException e) {
