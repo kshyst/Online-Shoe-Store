@@ -32,7 +32,7 @@ public class StoreServer{
 
 
     private static class ClientHandler extends Thread {
-        private static Customer currentCustomer;
+        private Customer currentCustomer;
         private Socket socket;
         private DataInputStream dataInputStream = null;
         private DataOutputStream dataOutputStream = null;
@@ -53,10 +53,9 @@ public class StoreServer{
                         request = dataInputStream.readUTF();
                         System.out.println(request);
                         handleRequests(request , dataOutputStream);
-                        dataOutputStream.flush();
                     }
                     catch(IOException i) {
-                        System.out.println(i);
+                        System.out.println(i.getMessage());
                     }
 
                 }
@@ -86,10 +85,10 @@ public class StoreServer{
                             register(matcher.group("id"), matcher.group("name"), matcher.group("money") , dataOutputStream);
                             break;
                         case LOGIN:
-                            login(matcher.group("id"));
+                            login(matcher.group("id") , dataOutputStream);
                             break;
                         case LOGOUT:
-                            logout();
+                            logout( dataOutputStream);
                             break;
                         case GETPRICE:
                             getPrice(matcher.group("shoename") , dataOutputStream);
@@ -111,7 +110,7 @@ public class StoreServer{
             }
         }
 
-        private static boolean isValidId(String id) {
+        private boolean isValidId(String id) {
             for (Customer customer : customers.values()) {
                 if (customer.getId().equals(id)) {
                     return false;
@@ -120,7 +119,7 @@ public class StoreServer{
             return true;
         }
 
-        private static boolean isValidName(String name) {
+        private boolean isValidName(String name) {
             for (Customer customer : customers.values()) {
                 if (customer.getName().equals(name)) {
                     return false;
@@ -129,7 +128,7 @@ public class StoreServer{
             return true;
         }
 
-        private static boolean isValidMoney(String moneyStr) {
+        private boolean isValidMoney(String moneyStr) {
             try {
                 int money = Integer.parseInt(moneyStr);
                 return money >= 0; //TODO maybe manfi is valid
@@ -138,11 +137,11 @@ public class StoreServer{
             }
         }
 
-        private static boolean isValidProductName(String productName) {
+        private boolean isValidProductName(String productName) {
             return inventory.containsKey(productName);
         }
 
-        private static boolean isValidQuantity(String quantityStr) {
+        private boolean isValidQuantity(String quantityStr) {
             try {
                 int quantity = Integer.parseInt(quantityStr);
                 return quantity > 0;
@@ -151,7 +150,7 @@ public class StoreServer{
             }
         }
 
-        private static void register(String id, String name, String moneyStr, DataOutputStream dataOutputStream) throws IOException {
+        private void register(String id, String name, String moneyStr, DataOutputStream dataOutputStream) throws IOException {
             if (!isValidId(id)) {
                 dataOutputStream.writeUTF("Id already exists");
                 return;
@@ -173,15 +172,27 @@ public class StoreServer{
             dataOutputStream.writeUTF("You have been registered successfully");
         }
 
-        private static void login(String id) {
-            currentCustomer = customers.get(id);
+        private void login(String id , DataOutputStream dataOutputStream) throws IOException {
+            if (customers.containsKey(id)){
+                currentCustomer = customers.get(id);
+                dataOutputStream.writeUTF("You have been logged in successfully");
+            }
+            else {
+                dataOutputStream.writeUTF("Customer not found");
+            }
         }
 
-        private static void logout() {
-            currentCustomer = null;
+        private void logout(DataOutputStream dataOutputStream) throws IOException {
+            if (currentCustomer != null) {
+                System.out.println(currentCustomer.getName() + " logged out");
+                currentCustomer = null;
+            }
+            else {
+                dataOutputStream.writeUTF("You must login first");
+            }
         }
 
-        private static void chargeCustomer(String chargeAmount, DataOutputStream dataOutputStream) throws IOException {
+        private void chargeCustomer(String chargeAmount, DataOutputStream dataOutputStream) throws IOException {
             if (currentCustomer == null) {
                 dataOutputStream.writeUTF("You must login first");
                 return;
@@ -196,7 +207,7 @@ public class StoreServer{
             dataOutputStream.writeUTF("You have been charged " + chargeAmount + " successfully. Your new balance is " + currentCustomer.getMoney());
         }
 
-        private static int getPrice(String productName, DataOutputStream dataOutputStream) throws IOException {
+        private int getPrice(String productName, DataOutputStream dataOutputStream) throws IOException {
 
             if (!isValidProductName(productName)) {
                 dataOutputStream.writeUTF("Product not found");
@@ -212,7 +223,7 @@ public class StoreServer{
             return -1;
         }
 
-        private static void getQuantity(String productName, DataOutputStream dataOutputStream) throws IOException {
+        private void getQuantity(String productName, DataOutputStream dataOutputStream) throws IOException {
 
             if (!isValidProductName(productName)) {
                 dataOutputStream.writeUTF("Product not found");
@@ -227,7 +238,7 @@ public class StoreServer{
             }
         }
 
-        private static void purchaseProduct(String productName, String quantity, DataOutputStream dataOutputStream) throws IOException {
+        private void purchaseProduct(String productName, String quantity, DataOutputStream dataOutputStream) throws IOException {
             if (!isValidProductName(productName)) {
                 dataOutputStream.writeUTF("Product not found");
                 return;
@@ -264,7 +275,7 @@ public class StoreServer{
             dataOutputStream.writeUTF("You have purchased " + quantity + " " + productName + " for " + totalPrice + ". Your new balance is " + currentCustomer.getMoney());
         }
 
-        private static void getCustomerMoney(DataOutputStream dataOutputStream) throws IOException {
+        private void getCustomerMoney(DataOutputStream dataOutputStream) throws IOException {
             if (currentCustomer == null) {
                 dataOutputStream.writeUTF("You must login first");
                 return;
