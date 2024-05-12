@@ -21,7 +21,6 @@ public class StoreServer{
             System.out.println("Server started");
 
             while (true) {
-                System.out.println("Waiting for a client ...");
                 new ClientHandler(serverSocket.accept()).start();
             }
         }
@@ -76,10 +75,12 @@ public class StoreServer{
         }
 
         private void handleRequests(String request , DataOutputStream dataOutputStream) throws IOException {
+            boolean isValidRequest = false;
             for (Regex regex : Regex.values()) {
                 Pattern pattern = Pattern.compile(regex.getRegex());
                 Matcher matcher = pattern.matcher(request);
                 if (matcher.matches()) {
+                    isValidRequest = true;
                     switch (regex) {
                         case REGISTER:
                             register(matcher.group("id"), matcher.group("name"), matcher.group("money") , dataOutputStream);
@@ -105,8 +106,14 @@ public class StoreServer{
                         case PURCHASE:
                             purchaseProduct(matcher.group("shoename"), matcher.group("quantity") , dataOutputStream);
                             break;
+                        default:
+                            dataOutputStream.writeUTF("Invalid request");
+                            break;
                     }
                 }
+            }
+            if (!isValidRequest) {
+                dataOutputStream.writeUTF("Invalid request");
             }
         }
 
